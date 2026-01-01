@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bingo</title>
+
+<style>
+:root{
+  --bg:#0e0e11;
+  --cell:#262630;
+  --border:#3a3a46;
+  --text:#ffffff;
+  --accent:#4f8cff;
+}
+*{
+  box-sizing:border-box;
+  font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+body{
+  margin:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:16px;
+}
+h1{
+  margin:0;
+  font-size:clamp(22px,4vw,36px);
+  font-weight:700;
+}
+p{
+  margin:0 0 8px 0;
+  font-size:clamp(13px,2.2vw,16px);
+  opacity:.85;
+  text-align:center;
+}
+.controls{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:8px;
+}
+button{
+  background:var(--cell);
+  color:var(--text);
+  border:1px solid var(--border);
+  padding:8px 12px;
+  cursor:pointer;
+}
+button:hover{ border-color:var(--accent); }
+
+#bingo-wrapper{
+  width:min(92vw,92vh);
+  aspect-ratio:1/1;
+}
+#bingo{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  grid-template-rows:repeat(5,1fr);
+  gap:0;
+  background:var(--border);
+}
+.cell{
+  background:var(--cell);
+  outline:1px solid var(--border);
+  outline-offset:-1px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:6px;
+  font-size:clamp(10px,2.2vw,15px);
+  line-height:1.15;
+  cursor:move;
+  user-select:none;
+  white-space:pre-wrap;
+  overflow:hidden;
+}
+.cell[contenteditable="true"]{
+  cursor:text;
+  outline:1px solid var(--accent);
+  outline-offset:-1px;
+}
+.cell.dragging{ opacity:.4; }
+</style>
+</head>
+
+<body>
+
+<h1 id="title"></h1>
+<p id="subtitle"></p>
+
+<div class="controls">
+  <button id="random">Bingo aléatoire</button>
+  <button id="reset">Réinitialiser</button>
+  <button id="export">Exporter PNG</button>
+</div>
+
+<div id="bingo-wrapper">
+  <div id="bingo"></div>
+</div>
+
+<script>
+const resolutions=[
+"Apprendre l’anglais (15 min/jour)",
+"Faire 7 jours sans écran le soir",
+"Regarder 50 films en 2026",
+"Faire 1 journée de bénévolat",
+"Faire une marche de 20 km minimum",
+"Courir 5 km sans s’arrêter",
+"Tenir un journal 30 jours",
+"Lire 20 pages/jour pendant 1 mois",
+"Boire 2 L d’eau/jour (1 semaine)",
+"Faire 30 jours sans soda",
+"Cuisiner 10 nouvelles recettes",
+"Faire une semaine sans sucre ajouté",
+"Économiser 500€ (minimum)",
+"Vendre 10 objets inutiles",
+"Faire un budget mensuel 3 mois",
+"Ranger 1 tiroir par jour (7 jours)",
+"Faire 100 pompes dans une journée",
+"Faire 30 min de stretching (10 jours)",
+"Méditer 10 min/jour (14 jours)",
+"Se coucher avant 23h (1 semaine)",
+"Apprendre 3 accords de guitare",
+"Apprendre à faire un plat signature",
+"Envoyer 5 messages à des amis",
+"Organiser un pique-nique",
+"Faire une sortie solo (ciné/café)",
+"Tester 5 nouveaux restaurants",
+"Visiter 3 musées",
+"Faire 1 week-end sans achats",
+"Faire 1 mois sans livraison",
+"Prendre 12 photos “style carte postale”",
+"Danser 10 minutes sans raison",
+"Faire un karaoké (même seul)",
+"Écrire une lettre au “moi futur”",
+"Planter une plante et la garder vivante",
+"Apprendre à dire bonjour en 10 langues",
+"Faire un puzzle 1000 pièces",
+"Faire 24h sans râler (mode zen)",
+"Tester une activité improbable",
+"Faire 1 journée en touriste dans sa ville",
+"Apprendre un tour de magie",
+"Faire une soirée jeux de société",
+"Faire 1 journée sans caféine",
+"Écrire 10 haïkus rigolos",
+"Envoyer 1 vraie carte postale",
+"Faire 1 don à une association",
+"Ranger son ordinateur",
+"Marcher 10 000 pas (7 jours)",
+"Faire 1 cours d’essai",
+"Apprendre à faire des crêpes parfaites",
+"Appeler un proche qu'on n'a pas appelé depuis longtemps",
+"Apprendre à taper sans regarder le clavier",
+"Faire 30 jours sans fast-food",
+"Lire un livre dans un genre détesté",
+"Regarder un film sans téléphone",
+"Tenir 1 semaine sans se plaindre",
+"Dire merci à quelqu’un par écrit",
+"Apprendre un mot nouveau par jour (30)",
+"Préparer un repas pour quelqu’un pour qui on ne le fait d'habitude",
+"Faire 1 journée sans réseaux sociaux",
+"Tester une nouvelle coiffure",
+"Faire un tri radical de ses vêtements",
+"Finir un projet laissé en plan",
+"Faire 1 journée sans musique",
+"Apprendre une recette d’enfance",
+"Se coucher sans téléphone (5 soirs)",
+"Essayer une activité artistique",
+"Passer 1 heure sans rien faire",
+"Regarder un documentaire entier",
+"Faire une photo moche de soi assumée",
+"Écrire une page sans s’arrêter",
+"Tester un sport inconnu",
+"Apprendre à dire non sans se justifier",
+"Écouter un album en entier",
+"Créer une tradition perso 2026",
+"Regarder un film en VO sans sous-titres",
+"Tenir un carnet de rêves (7 nuits)",
+"Tester un plat jamais mangé",
+"Faire un check-up administratif",
+"Vaincre une de ses peurs",
+"Faire une marche sous la pluie",
+"Écrire une lettre à une personne décédé et lui dire ce qu'on a sur le cœur"
+];
+
+const bingo = document.getElementById("bingo");
+let dragged = null;
+
+function currentBingoYear(){
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0=Jan ... 11=Dec
+  return (month === 11) ? (year + 1) : year; // Décembre => année suivante
+}
+
+function updateHeader(){
+  const y = currentBingoYear();
+  document.title = `Bingo ${y}`;
+  document.getElementById("title").textContent = `Bingo ${y}`;
+  document.getElementById("subtitle").textContent =
+    `Mettez vos résolutions pour ${y} et faites le plus de lignes possible dans la grille.`;
+}
+
+function shuffle(arr){
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function makeCell(text){
+  const d = document.createElement("div");
+  d.className = "cell";
+  d.textContent = text || "";
+  d.draggable = true;
+
+  // clic simple → édition normale (comme un input)
+  d.addEventListener("click", () => {
+    d.contentEditable = "true";
+  });
+
+  // sortie du champ
+  d.addEventListener("blur", () => {
+    d.contentEditable = "false";
+  });
+
+  // désactiver le drag pendant l’édition
+  d.addEventListener("mousedown", () => {
+    d.draggable = !d.isContentEditable;
+  });
+
+  // drag & drop
+  d.addEventListener("dragstart", () => {
+    if(d.isContentEditable) return;
+    dragged = d;
+    d.classList.add("dragging");
+  });
+
+  d.addEventListener("dragend", () => {
+    dragged = null;
+    d.classList.remove("dragging");
+  });
+
+  d.addEventListener("dragover", e => e.preventDefault());
+
+  d.addEventListener("drop", () => {
+    if(!dragged || dragged === d) return;
+    const cells = [...bingo.children];
+    const i1 = cells.indexOf(dragged);
+    const i2 = cells.indexOf(d);
+    if(i1 < i2) bingo.insertBefore(dragged, d.nextSibling);
+    else bingo.insertBefore(dragged, d);
+  });
+
+  return d;
+}
+
+function placeCaretAtEnd(el){
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function generate(){
+  bingo.innerHTML = "";
+
+  const base = resolutions.length
+    ? shuffle(resolutions).slice(0,25)
+    : shuffle(Array.from({length:25},(_,i)=>`Résolution ${i+1}`));
+
+  for(let i=0;i<25;i++){
+    bingo.appendChild(makeCell(base[i] || ""));
+  }
+}
+
+function reset(){
+  bingo.innerHTML = "";
+  for(let i=0;i<25;i++){
+    bingo.appendChild(makeCell(`Résolution ${i+1}`));
+  }
+}
+
+function exportPNG(){
+  const size = 1080;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  const firstCell = bingo.querySelector(".cell");
+  const styles = getComputedStyle(firstCell);
+  const fontFamily = styles.fontFamily;
+  const fontWeight = styles.fontWeight;
+
+  ctx.fillStyle = "#1c1c22";
+  ctx.fillRect(0,0,size,size);
+
+  const border = 2;
+  const cellSize = (size - border * 6) / 5;
+
+  const fontSize = cellSize * 0.105;
+  const lineHeight = fontSize * 1.08;
+  const padding = 22;
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+  [...bingo.children].forEach((c,i)=>{
+    const x = i % 5;
+    const y = Math.floor(i / 5);
+    const px = x * (cellSize + border);
+    const py = y * (cellSize + border);
+
+    ctx.fillStyle = "#262630";
+    ctx.fillRect(px, py, cellSize, cellSize);
+
+    ctx.fillStyle = "#ffffff";
+    drawText(ctx, c.textContent, px + cellSize/2, py + cellSize/2, cellSize - padding, lineHeight);
+  });
+
+  ctx.fillStyle = "#3a3a46";
+  for(let i=0;i<=5;i++){
+    const pos = i * cellSize + Math.max(0,i-1)*border;
+    ctx.fillRect(pos,0,border,size);
+    ctx.fillRect(0,pos,size,border);
+  }
+
+  const link = document.createElement("a");
+  link.download = `bingo_${currentBingoYear()}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function drawText(ctx, text, x, y, maxWidth, lineHeight){
+  if(!text) return;
+  text = String(text).replace(/\r/g,"");
+  const raw = text.split("\n");
+  const lines = [];
+
+  raw.forEach(row=>{
+    const words = row.split(" ").filter(Boolean);
+    let line = "";
+    words.forEach(w=>{
+      const test = line ? line + " " + w : w;
+      if(ctx.measureText(test).width > maxWidth){
+        if(line) lines.push(line);
+        line = w;
+      }else{
+        line = test;
+      }
+    });
+    if(line) lines.push(line);
+  });
+
+  const startY = y - (lines.length - 1) * lineHeight / 2;
+  lines.forEach((l,i)=>ctx.fillText(l, x, startY + i * lineHeight));
+}
+
+document.getElementById("random").onclick = generate;
+document.getElementById("reset").onclick = reset;
+document.getElementById("export").onclick = exportPNG;
+
+updateHeader();
+generate();
+</script>
+</body>
+</html>
